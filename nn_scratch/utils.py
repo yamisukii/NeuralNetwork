@@ -39,3 +39,9 @@ def binary_cross_entropy_single(y_hat, y):
 
     loss = -(y * np.log(y_hat) + (1 - y) * np.log(1 - y_hat))
     return loss
+
+
+def categorical_cross_entropy(y_hat, y):
+    epsilon = 1e-12
+    y_hat = np.clip(y_hat, epsilon, 1 - epsilon)
+    return -np.sum(y * np.log(y_hat))

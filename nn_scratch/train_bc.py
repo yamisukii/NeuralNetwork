@@ -1,15 +1,17 @@
-import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler
+import pandas as pd
+import utils
+from nn import NeuralNetwork
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 # Load the data
 train_data = pd.read_csv(
-    "C:\\Users\\stefa\\OneDrive\\Dokumente\\Uni\\Master\\ML\\Ex2\\NeuralNetwork\\nn_scratch\\breast-cancer-diagnostic.shuf.lrn.csv"
+    "nn_scratch\\breast-cancer-diagnostic.shuf.lrn.csv"
 )
 
 test_data = pd.read_csv(
-    "C:\\Users\\stefa\\OneDrive\\Dokumente\\Uni\\Master\\ML\\Ex2\\NeuralNetwork\\nn_scratch\\breast-cancer-diagnostic.shuf.tes.csv"
+    "nn_scratch\\breast-cancer-diagnostic.shuf.tes.csv"
 )
 
 # Drop ID column and extract features/labels
@@ -25,20 +27,20 @@ X_train, X_val, y_train, y_val = train_test_split(
     X_scaled, y, test_size=0.2, random_state=42
 )
 
-from nn import NeuralNetwork
-import utils
 
 # Define network structure (e.g., 30 input features → 1 hidden layer → 1 output)
 nn = NeuralNetwork(
     layer_sizes=[X_train.shape[1], 16, 1],
     activations=[utils.relu, utils.sigmoid],
-    learning_rate=1,
+    learning_rate=0.01,
+    multiclass=False
 )
 
 # Train
-nn.train(X_train, y_train.values, epochs=100)
+nn.train(X_train, y_train.values, epochs=50)
 
 # Predict and evaluate
 preds = nn.predict(X_val)
 accuracy = np.mean(preds.flatten() == y_val.values)
 print(f"Validation Accuracy: {accuracy:.2%}")
+nn.model_size()

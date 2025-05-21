@@ -3,9 +3,10 @@ import utils
 
 
 class NeuralNetwork:
-    def __init__(self, layer_sizes, activations, learning_rate=0.01):
+    def __init__(self, layer_sizes, activations, learning_rate=0.01, multiclass=False):
         self.layer_sizes = layer_sizes
         self.learning_rate = learning_rate
+        self.multiclass = multiclass
         self.params = self._init_weights()
         self.activations = activations
 
@@ -47,7 +48,12 @@ class NeuralNetwork:
 
         # Output layer
         A_final = self.cache[f"A{L}"]
-        dZ = A_final - y.reshape(-1, 1)
+        # Output layer gradient
+
+        if self.multiclass:
+            dZ = A_final - y  # y = one-hot
+        else:
+            dZ = A_final - y.reshape(-1, 1)  # y = scalar, reshape to column
 
         A_prev = self.cache[f"A{L-1}"] if L > 1 else X
         grads[f"dW{L}"] = np.dot(A_prev.T, dZ) / m
@@ -80,14 +86,21 @@ class NeuralNetwork:
             total_loss = 0
 
             for i in range(X.shape[0]):
-                xi = X[i].reshape(1, -1)  # single example, shape (1, input_size)
+                # single example, shape (1, input_size)
+                xi = X[i].reshape(1, -1)
                 yi = y[i]  # label (scalar or shape (1,))
 
                 # Forward pass
                 output = self.forward(xi)
 
                 # Compute loss (scalar)
-                loss = utils.binary_cross_entropy_single(output, yi)
+                # Im Training pro Beispiel:
+                if self.multiclass:
+                    loss = utils.categorical_cross_entropy_single(
+                        output.flatten(), yi)
+                else:
+                    loss = utils.binary_cross_entropy_single(output, yi)
+
                 total_loss += loss
 
                 # Backward pass
@@ -101,5 +114,34 @@ class NeuralNetwork:
 
     def predict(self, X):
         outputs = self.forward(X)  # shape: (n_samples, 1)
-        predictions = (outputs >= 0.5).astype(int)
-        return predictions
+        if self.multiclass:
+            return np.argmax(outputs, axis=1)  # class index
+        else:
+            return (outputs >= 0.5).astype(int)  # binary 0/1
+
+    def model_size(self, verbose=True):
+        total_params = 0
+        total_bytes = 0
+
+        for l in range(1, len(self.layer_sizes)):
+            W = self.params[f"W{l}"]
+            b = self.params[f"b{l}"]
+
+            w_params = W.size
+            b_params = b.size
+            layer_params = w_params + b_params
+
+            total_params += layer_params
+            # assuming float64 (8 bytes per param)
+            total_bytes += layer_params * 8
+
+            if verbose:
+                print(
+                    f"Layer {l}: W{l}.shape = {W.shape}, b{l}.shape = {b.shape}, params = {layer_params}")
+
+        if verbose:
+            print(f"\nTotal parameters: {total_params}")
+            print(
+                f"Estimated RAM usage: {total_bytes / 1024:.2f} KB ({total_bytes / (1024 ** 2):.2f} MB)")
+
+        return total_params, total_bytes
