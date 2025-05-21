@@ -10,7 +10,7 @@ def relu_derivative(x):
 
 
 def sigmoid(x):
-    return (1/(1 + np.exp(-x)))
+    return 1 / (1 + np.exp(-x))
 
 
 def sigmoid_derivative(x):
@@ -26,4 +26,16 @@ def generate_wt(x, y):
     li = []
     for i in range(x * y):
         li.append(np.random.randn())
-    return (np.array(li).reshape(x, y))
+    return np.array(li).reshape(x, y)
+
+
+def binary_cross_entropy_single(y_hat, y):
+    """
+    y_hat: predicted probability (scalar, after sigmoid)
+    y: true label (0 or 1)
+    """
+    epsilon = 1e-12  # to avoid log(0)
+    y_hat = np.clip(y_hat, epsilon, 1 - epsilon)
+
+    loss = -(y * np.log(y_hat) + (1 - y) * np.log(1 - y_hat))
+    return loss
