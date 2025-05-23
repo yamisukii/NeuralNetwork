@@ -109,7 +109,7 @@ class NeuralNetwork:
 
                 # Compute loss
                 if self.multiclass:
-                    loss = utils.categorical_cross_entropy_single(
+                    loss = utils.categorical_cross_entropy(
                         output.flatten(), yi.flatten()
                     )
                     pred = np.argmax(output)
@@ -138,7 +138,7 @@ class NeuralNetwork:
                 if self.multiclass:
                     val_loss = np.mean(
                         [
-                            utils.categorical_cross_entropy_single(
+                            utils.categorical_cross_entropy(
                                 self.forward(X_val[i].reshape(1, -1)).flatten(),
                                 y_val[i].flatten(),
                             )
