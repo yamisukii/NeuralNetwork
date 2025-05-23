@@ -84,36 +84,91 @@ class NeuralNetwork:
             self.params[f"W{l}"] -= self.learning_rate * grads[f"dW{l}"]
             self.params[f"b{l}"] -= self.learning_rate * grads[f"db{l}"]
 
-    def train(self, X, y, epochs):
+    def train(self, X, y, epochs, X_val=None, y_val=None):
+        self.history = {
+            "train_loss": [],
+            "train_acc": [],
+            "val_loss": [],
+            "val_acc": [],
+        }
+
         for epoch in range(epochs):
             total_loss = 0
+            correct = 0
 
             for i in range(X.shape[0]):
-                # single example, shape (1, input_size)
                 xi = X[i].reshape(1, -1)
-                yi = y[i]  # label (scalar or shape (1,))
+                yi = y[i]
 
-                # Forward pass
+                if self.multiclass:
+                    yi = yi.reshape(1, -1)
+                else:
+                    yi = np.array([[yi]])
+
                 output = self.forward(xi)
 
-                # Compute loss (scalar)
-                # Im Training pro Beispiel:
+                # Compute loss
                 if self.multiclass:
                     loss = utils.categorical_cross_entropy_single(
-                        output.flatten(), yi)
+                        output.flatten(), yi.flatten()
+                    )
+                    pred = np.argmax(output)
+                    label = np.argmax(yi)
                 else:
                     loss = utils.binary_cross_entropy_single(output, yi)
+                    pred = int(output >= 0.5)
+                    label = int(yi[0][0])
 
                 total_loss += loss
+                correct += int(pred == label)
 
-                # Backward pass
                 grads = self.backward(xi, yi, output)
-
-                # Update weights using gradients
                 self.update_weights(grads)
 
             avg_loss = total_loss / X.shape[0]
-            print(f"Epoch {epoch + 1}/{epochs}, Loss: {avg_loss.item():.4f}")
+            acc = correct / X.shape[0]
+
+            self.history["train_loss"].append(avg_loss)
+            self.history["train_acc"].append(acc)
+
+            # Validation (if provided)
+            if X_val is not None and y_val is not None:
+                preds = self.predict(X_val)
+
+                if self.multiclass:
+                    val_loss = np.mean(
+                        [
+                            utils.categorical_cross_entropy_single(
+                                self.forward(X_val[i].reshape(1, -1)).flatten(),
+                                y_val[i].flatten(),
+                            )
+                            for i in range(X_val.shape[0])
+                        ]
+                    )
+                    val_labels = np.argmax(y_val, axis=1)
+                else:
+                    val_loss = np.mean(
+                        [
+                            utils.binary_cross_entropy_single(
+                                self.forward(X_val[i].reshape(1, -1)),
+                                np.array([[y_val[i]]]),
+                            )
+                            for i in range(X_val.shape[0])
+                        ]
+                    )
+                    val_labels = y_val
+
+                val_acc = np.mean(preds.flatten() == val_labels)
+                self.history["val_loss"].append(val_loss)
+                self.history["val_acc"].append(val_acc)
+
+                print(
+                    f"Epoch {epoch+1}/{epochs}, Loss: {float(avg_loss):.4f}, Acc: {float(acc):.4f}, Val Loss: {float(val_loss):.4f}, Val Acc: {float(val_acc):.4f}"
+                )
+            else:
+                print(
+                    f"Epoch {epoch+1}/{epochs}, Loss: {float(avg_loss):.4f}, Acc: {float(acc):.4f}"
+                )
 
     def predict(self, X):
         outputs = self.forward(X)  # shape: (n_samples, 1)
@@ -140,11 +195,13 @@ class NeuralNetwork:
 
             if verbose:
                 print(
-                    f"Layer {l}: W{l}.shape = {W.shape}, b{l}.shape = {b.shape}, params = {layer_params}")
+                    f"Layer {l}: W{l}.shape = {W.shape}, b{l}.shape = {b.shape}, params = {layer_params}"
+                )
 
         if verbose:
             print(f"\nTotal parameters: {total_params}")
             print(
-                f"Estimated RAM usage: {total_bytes / 1024:.2f} KB ({total_bytes / (1024 ** 2):.2f} MB)")
+                f"Estimated RAM usage: {total_bytes / 1024:.2f} KB ({total_bytes / (1024 ** 2):.2f} MB)"
+            )
 
         return total_params, total_bytes
