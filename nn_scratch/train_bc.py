@@ -6,12 +6,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 # Load the data
+
 train_data = pd.read_csv(
-    "nn_scratch\\breast-cancer-diagnostic.shuf.lrn.csv"
+    'data/breast-cancer-diagnostic.shuf.lrn.csv'
 )
 
 test_data = pd.read_csv(
-    "nn_scratch\\breast-cancer-diagnostic.shuf.tes.csv"
+    'data/breast-cancer-diagnostic.shuf.tes.csv'
 )
 
 # Drop ID column and extract features/labels

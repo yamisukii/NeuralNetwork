@@ -1,3 +1,5 @@
+from nn import NeuralNetwork  # Your class with forward/backward/train/etc.
+import utils  # Your utils.py should already be defined
 import numpy as np
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
@@ -23,8 +25,6 @@ scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
-import utils  # Your utils.py should already be defined
-from nn import NeuralNetwork  # Your class with forward/backward/train/etc.
 
 # Define network: 4 inputs → 1 hidden layer (e.g. 5 nodes) → 1 output (sigmoid)
 nn = NeuralNetwork(

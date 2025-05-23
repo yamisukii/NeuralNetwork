@@ -17,6 +17,10 @@ def sigmoid_derivative(x):
     return sigmoid(x) * (1 - sigmoid(x))
 
 
+def tanh_derivative(a):
+    return 1 - a ** 2
+
+
 def softmax(x):
     exps = np.exp(x - np.max(x, axis=1, keepdims=True))
     return exps / np.sum(exps, axis=1, keepdims=True)
@@ -45,3 +49,7 @@ def categorical_cross_entropy(y_hat, y):
     epsilon = 1e-12
     y_hat = np.clip(y_hat, epsilon, 1 - epsilon)
     return -np.sum(y * np.log(y_hat))
+
+
+def tanh(x):
+    return np.tanh(x)

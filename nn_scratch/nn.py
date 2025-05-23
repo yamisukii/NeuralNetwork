@@ -63,12 +63,15 @@ class NeuralNetwork:
         for l in reversed(range(1, L)):
             dA = np.dot(dZ, self.params[f"W{l+1}"].T)
             Z = self.cache[f"Z{l}"]
+            A = self.cache[f"A{l}"]
 
             activation_fn = self.activations[l - 1]
             if activation_fn == utils.relu:
                 dZ = dA * utils.relu_derivative(Z)
             elif activation_fn == utils.sigmoid:
                 dZ = dA * utils.sigmoid_derivative(Z)
+            elif activation_fn == utils.tanh:
+                dZ = dA * utils.tanh_derivative(A)
 
             A_prev = self.cache[f"A{l-1}"] if l > 1 else X
             grads[f"dW{l}"] = np.dot(A_prev.T, dZ) / m
