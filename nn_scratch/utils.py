@@ -53,3 +53,15 @@ def categorical_cross_entropy(y_hat, y):
 
 def tanh(x):
     return np.tanh(x)
+
+
+def activation_derivative(name, Z, A=None):
+    if name == "relu":
+        return (Z > 0).astype(float)
+    elif name == "sigmoid":
+        sig = 1 / (1 + np.exp(-Z))
+        return sig * (1 - sig)
+    elif name == "tanh":
+        return 1 - A**2
+    else:
+        raise ValueError(f"Unknown activation: {name}")

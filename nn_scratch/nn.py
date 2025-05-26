@@ -46,34 +46,26 @@ class NeuralNetwork:
         m = X.shape[0]
         L = len(self.layer_sizes) - 1
 
-        # Output layer
+        # === Output layer ===
         A_final = self.cache[f"A{L}"]
-        # Output layer gradient
+        dZ = A_final - y if self.multiclass else (A_final - y.reshape(-1, 1))
+        A_prev = self.cache.get(f"A{L-1}", X)
 
-        if self.multiclass:
-            dZ = A_final - y  # y = one-hot
-        else:
-            dZ = A_final - y.reshape(-1, 1)  # y = scalar, reshape to column
-
-        A_prev = self.cache[f"A{L-1}"] if L > 1 else X
         grads[f"dW{L}"] = np.dot(A_prev.T, dZ) / m
         grads[f"db{L}"] = np.sum(dZ, axis=0, keepdims=True) / m
 
-        # Hidden layers
+        # === Hidden layers ===
         for l in reversed(range(1, L)):
             dA = np.dot(dZ, self.params[f"W{l+1}"].T)
             Z = self.cache[f"Z{l}"]
             A = self.cache[f"A{l}"]
+            A_prev = self.cache.get(f"A{l-1}", X)
 
-            activation_fn = self.activations[l - 1]
-            if activation_fn == utils.relu:
-                dZ = dA * utils.relu_derivative(Z)
-            elif activation_fn == utils.sigmoid:
-                dZ = dA * utils.sigmoid_derivative(Z)
-            elif activation_fn == utils.tanh:
-                dZ = dA * utils.tanh_derivative(A)
+            act_fn = self.activations[l - 1]
+            act_name = act_fn.__name__
 
-            A_prev = self.cache[f"A{l-1}"] if l > 1 else X
+            dZ = dA * utils.activation_derivative(act_name, Z, A)
+
             grads[f"dW{l}"] = np.dot(A_prev.T, dZ) / m
             grads[f"db{l}"] = np.sum(dZ, axis=0, keepdims=True) / m
 
@@ -98,20 +90,15 @@ class NeuralNetwork:
 
             for i in range(X.shape[0]):
                 xi = X[i].reshape(1, -1)
-                yi = y[i]
-
-                if self.multiclass:
-                    yi = yi.reshape(1, -1)
-                else:
-                    yi = np.array([[yi]])
+                yi = y[i].reshape(
+                    1, -1) if self.multiclass else np.array([[y[i]]])
 
                 output = self.forward(xi)
 
-                # Compute loss
+                # Loss + prediction
                 if self.multiclass:
                     loss = utils.categorical_cross_entropy(
-                        output.flatten(), yi.flatten()
-                    )
+                        output.flatten(), yi.flatten())
                     pred = np.argmax(output)
                     label = np.argmax(yi)
                 else:
@@ -122,56 +109,32 @@ class NeuralNetwork:
                 total_loss += loss
                 correct += int(pred == label)
 
+                # Backprop + update
                 grads = self.backward(xi, yi, output)
                 self.update_weights(grads)
 
+            # Epoch stats
             avg_loss = total_loss / X.shape[0]
             acc = correct / X.shape[0]
-
             self.history["train_loss"].append(avg_loss)
             self.history["train_acc"].append(acc)
 
-            # Validation (if provided)
+            # Validation
             if X_val is not None and y_val is not None:
-                preds = self.predict(X_val)
-
-                if self.multiclass:
-                    val_loss = np.mean(
-                        [
-                            utils.categorical_cross_entropy(
-                                self.forward(X_val[i].reshape(1, -1)).flatten(),
-                                y_val[i].flatten(),
-                            )
-                            for i in range(X_val.shape[0])
-                        ]
-                    )
-                    val_labels = np.argmax(y_val, axis=1)
-                else:
-                    val_loss = np.mean(
-                        [
-                            utils.binary_cross_entropy_single(
-                                self.forward(X_val[i].reshape(1, -1)),
-                                np.array([[y_val[i]]]),
-                            )
-                            for i in range(X_val.shape[0])
-                        ]
-                    )
-                    val_labels = y_val
-
-                val_acc = np.mean(preds.flatten() == val_labels)
+                val_loss, val_acc = self.evaluate_on_validation(X_val, y_val)
                 self.history["val_loss"].append(val_loss)
                 self.history["val_acc"].append(val_acc)
 
                 print(
-                    f"Epoch {epoch+1}/{epochs}, Loss: {float(avg_loss):.4f}, Acc: {float(acc):.4f}, Val Loss: {float(val_loss):.4f}, Val Acc: {float(val_acc):.4f}"
+                    f"Epoch {epoch+1}/{epochs}, Loss: {float(avg_loss):.4f}, Acc: {float(acc):.4f}, "
+                    f"Val Loss: {float(val_loss):.4f}, Val Acc: {float(val_acc):.4f}"
                 )
             else:
                 print(
-                    f"Epoch {epoch+1}/{epochs}, Loss: {float(avg_loss):.4f}, Acc: {float(acc):.4f}"
-                )
+                    f"Epoch {epoch+1}/{epochs}, Loss: {float(avg_loss):.4f}, Acc: {float(acc):.4f}")
 
     def predict(self, X):
-        outputs = self.forward(X)  # shape: (n_samples, 1)
+        outputs = self.forward(X)
         if self.multiclass:
             return np.argmax(outputs, axis=1)  # class index
         else:
@@ -190,7 +153,6 @@ class NeuralNetwork:
             layer_params = w_params + b_params
 
             total_params += layer_params
-            # assuming float64 (8 bytes per param)
             total_bytes += layer_params * 8
 
             if verbose:
@@ -205,3 +167,28 @@ class NeuralNetwork:
             )
 
         return total_params, total_bytes
+
+    def evaluate_on_validation(self, X_val, y_val):
+        preds = self.predict(X_val)
+
+        if self.multiclass:
+            val_loss = np.mean([
+                utils.categorical_cross_entropy(
+                    self.forward(X_val[i].reshape(1, -1)).flatten(),
+                    y_val[i].flatten()
+                )
+                for i in range(X_val.shape[0])
+            ])
+            true_labels = np.argmax(y_val, axis=1)
+        else:
+            val_loss = np.mean([
+                utils.binary_cross_entropy_single(
+                    self.forward(X_val[i].reshape(1, -1)),
+                    np.array([[y_val[i]]])
+                )
+                for i in range(X_val.shape[0])
+            ])
+            true_labels = y_val
+
+        acc = np.mean(preds.flatten() == true_labels)
+        return float(val_loss), float(acc)
